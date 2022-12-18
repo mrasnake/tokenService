@@ -3,8 +3,9 @@ package service
 import (
 	"fmt"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/mrasnake/TokenService/internal/storage"
+	"github.com/mrasnake/tokenService/internal/storage"
 	"golang.org/x/mod/sumdb/storage"
+	datastore "mrasnake/TokenService/internal/storage"
 	"os"
 	"strings"
 	"sync"

@@ -2,37 +2,35 @@ package transport
 
 import (
 	"fmt"
-	"github.com/mrasnake/messageQueue/cmd/run_server/service"
+	"github.com/mrasnake/tokenService/internal/service"
 	"github.com/streadway/amqp"
-	"github.com/urfave/cli/v2"
 	"log"
 )
 
 type server struct {
-	QueueConn string
-	QueueName string
+	QueueConn   string
+	QueueName   string
 	LogFileName string
-
 }
 
-type Message struct{
+type Message struct {
 	Request string `json:"request"`
-	Value string `json:"value"`
+	Value   string `json:"value"`
 }
 
 // defineSettings gathers the configurations and creates the server object.
 func defineSettings(ctx *cli.Context) *server {
 
 	out := &server{
-		QueueConn: ctx.String("connection"),
-		QueueName: ctx.String("queue"),
+		QueueConn:   ctx.String("connection"),
+		QueueName:   ctx.String("queue"),
 		LogFileName: ctx.String("logs"),
 	}
 	return out
 }
 
 // Run sets up the message queue and runs the server waiting for requests.
-func (s *server) Run() error{
+func (s *server) Run() error {
 	conn, err := amqp.Dial(s.QueueConn)
 	if err != nil {
 		return fmt.Errorf("failed to connect to RabbitMQ: %w", err)
@@ -47,11 +45,11 @@ func (s *server) Run() error{
 
 	q, err := ch.QueueDeclare(
 		s.QueueName, // name
-		false,   // durable
-		false,   // delete when unused
-		false,   // exclusive
-		false,   // no-wait
-		nil,     // arguments
+		false,       // durable
+		false,       // delete when unused
+		false,       // exclusive
+		false,       // no-wait
+		nil,         // arguments
 	)
 	if err != nil {
 		return fmt.Errorf("failed to declare queue: %w", err)
@@ -71,7 +69,7 @@ func (s *server) Run() error{
 	}
 
 	svr, err := service.NewService(s.LogFileName)
-	if err != nil{
+	if err != nil {
 		return fmt.Errorf("service not created: %w", err)
 	}
 
