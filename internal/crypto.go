@@ -1,10 +1,11 @@
-package service
+package internal
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io"
 )
 
@@ -37,12 +38,12 @@ func Decrypter(key []byte, secret string) ([]byte, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create cypher: %w", err)
 	}
 
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create GCM: %w", err)
 	}
 
 	return aesgcm.Open(nil, nonce, ciphertext, nil)
