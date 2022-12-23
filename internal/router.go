@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
+	"net/http"
 )
 
 func (s *Server) InitServer() {
@@ -14,17 +15,7 @@ func (s *Server) InitServer() {
 		UnEscapeHTML:  true,
 	})
 
-	s.router.PathPrefix("/assets/").Handler(stat1)
-	s.router.HandleFunc("/Tokens", s.ReadTokens).Methods("GET")
-	s.router.HandleFunc("/", index)
-	s.router.HandleFunc("/aboutUs", aboutUs)
-	s.router.HandleFunc("/attorneys", attorneys)
-	s.router.HandleFunc("/realEstate", realEstate)
-	s.router.HandleFunc("/business", business)
-	s.router.HandleFunc("/civilLitigation", civilLitigation)
-	s.router.HandleFunc("/criminalLitigation", criminalLitigation)
-	s.router.HandleFunc("/lawFirms", lawFirms)
-	s.router.HandleFunc("/resources", resources)
-	s.router.HandleFunc("/contactUs", contactUs)
-	s.router.HandleFunc("/api/email", emailForm)
-}
+	s.router.HandleFunc("/tokens", s.ReadTokens).Methods(http.MethodGet)
+	s.router.HandleFunc("/tokens", s.WriteToken).Methods(http.MethodPost)
+	s.router.HandleFunc("/tokens/{token}", s.UpdateToken).Methods(http.MethodPut)
+	s.router.HandleFunc("/tokens/{token}", s.DeleteToken).Methods(http.MethodDelete)

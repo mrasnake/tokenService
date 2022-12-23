@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
 	"net/http"
@@ -38,13 +39,68 @@ func (s *Server) ReadTokens(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) WriteToken(w http.ResponseWriter, r *http.Request) {
+	var in TokenSecret
 
+	err := json.NewDecoder(r.Body).Decode(&in)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	req := &WriteTokenRequest{
+		tokenSecret: in,
+	}
+
+	ret, err := s.service.WriteToken(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.viewrender.JSON(w, http.StatusOK, ret)
 }
 
 func (s *Server) UpdateToken(w http.ResponseWriter, r *http.Request) {
 
+	vars := mux.Vars(r)
+
+	var in TokenSecret
+
+	err := json.NewDecoder(r.Body).Decode(&in)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	in.Token = vars["token"]
+
+	req := &UpdateTokenRequest{
+		tokenSecret: in,
+	}
+
+	err = s.service.UpdateToken(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.viewrender.JSON(w, http.StatusNoContent, nil)
 }
 
 func (s *Server) DeleteToken(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+
+	req := &DeleteTokenRequest{
+		Token: vars["token"],
+	}
+
+	err := s.service.DeleteToken(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.viewrender.JSON(w, http.StatusNoContent, nil)
 
 }
