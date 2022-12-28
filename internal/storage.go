@@ -17,15 +17,6 @@ func NewStorage() *Storage {
 	}
 }
 
-// WriteToken creates a new object in storage.
-func (s *Storage) WriteToken(token string, secret []byte) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.db[token] = secret
-	return nil
-}
-
 // ReadToken returns a matching object from storage.
 func (s *Storage) ReadToken(key string) ([]byte, error) {
 	s.mu.Lock()
@@ -39,7 +30,16 @@ func (s *Storage) ReadToken(key string) ([]byte, error) {
 	return val, nil
 }
 
-// UpdateToken returns all objects in storage.
+// WriteToken creates a new object in storage.
+func (s *Storage) WriteToken(token string, secret []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.db[token] = secret
+	return nil
+}
+
+// UpdateToken changes the value of an existing object.
 func (s *Storage) UpdateToken(token string, secret []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

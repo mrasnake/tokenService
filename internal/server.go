@@ -8,9 +8,9 @@ import (
 	"net/url"
 )
 
-func NewServer(srvc TokenService) *Server {
+func NewServer(srvc *TokenService) *Server {
 	return &Server{
-		service: &srvc,
+		service: srvc,
 	}
 }
 
@@ -29,7 +29,7 @@ func (s *Server) ReadTokens(w http.ResponseWriter, r *http.Request) {
 		Tokens: toks,
 	}
 
-	ret, err := s.service.ReadToken(req)
+	ret, err := s.service.ReadTokens(req)
 	if err != nil {
 		return
 	}
@@ -39,16 +39,12 @@ func (s *Server) ReadTokens(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) WriteToken(w http.ResponseWriter, r *http.Request) {
-	var in TokenSecret
+	var req *WriteTokenRequest
 
-	err := json.NewDecoder(r.Body).Decode(&in)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	}
-
-	req := &WriteTokenRequest{
-		tokenSecret: in,
 	}
 
 	ret, err := s.service.WriteToken(req)

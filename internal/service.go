@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/google/uuid"
 	"os"
 	"sync"
 )
@@ -37,20 +38,20 @@ func (t *TokenService) WriteLog(msg string) {
 
 type TokenSecret struct {
 	Token  string `json:"token"`
-	Secret string `json:"service"`
+	Secret string `json:"secret"`
 }
 
 type WriteTokenRequest struct {
-	tokenSecret TokenSecret
+	Secret string `json:"secret"`
 }
 
 type WriteTokenResponse struct {
-	Token string
+	Token string `json:"token"`
 }
 
 func (a WriteTokenRequest) Validate() error {
 	return validation.ValidateStruct(&a,
-		validation.Field(&a.tokenSecret, validation.Required),
+		validation.Field(&a.Secret, validation.Required),
 	)
 }
 
@@ -90,46 +91,55 @@ func (r DeleteTokenRequest) Validate() error {
 
 // Service layer functions validates the request data and
 // calls the appropriate storage layer functions.
-func (t *TokenService) WriteToken(req *WriteTokenRequest) (*WriteTokenResponse, error) {
+func (t *TokenService) ReadTokens(req *ReadTokenRequest) (*ReadTokenResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	encrypt, err := Encrypter([]byte(req.tokenSecret.Token), []byte(req.tokenSecret.Secret))
-	if err != nil {
-		return nil, err
-	}
+	var ts []TokenSecret
 
-	err = t.storage.WriteToken(req.tokenSecret.Token, encrypt)
-	if err != nil {
-		return nil, err
-	}
+	for _, tok := range req.Tokens {
+		ret, err := t.storage.ReadToken(tok)
+		if err != nil {
+			return nil, err
+		}
 
-	out := &WriteTokenResponse{
-		Token: req.tokenSecret.Token,
+		d, err := Decrypter([]byte(tok), string(ret))
+		if err != nil {
+			return nil, err
+		}
+
+		ts = append(ts, TokenSecret{
+			Token:  tok,
+			Secret: string(d),
+		})
+	}
+	out := &ReadTokenResponse{
+		tokenSecrets: ts,
 	}
 
 	return out, nil
 }
 
-func (t *TokenService) ReadToken(req *ReadTokenRequest) (*ReadTokenResponse, error) {
+func (t *TokenService) WriteToken(req *WriteTokenRequest) (*WriteTokenResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	ret, err := t.storage.ReadToken(req.Tokens)
+	token := uuid.NewString()
+
+	encrypt, err := Encrypter([]byte(token), []byte(req.Secret))
 	if err != nil {
 		return nil, err
 	}
 
-	d, err := Decrypter([]byte(req.Token), string(ret))
+	err = t.storage.WriteToken(token, encrypt)
 	if err != nil {
 		return nil, err
 	}
 
-	out := &ReadTokenResponse{
-		Tokens: req.Tokens,
-		Secret: string(d),
+	out := &WriteTokenResponse{
+		Token: token,
 	}
 
 	return out, nil
