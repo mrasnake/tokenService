@@ -1,39 +1,33 @@
 package internal
 
 import (
+	"crypto/rand"
+	"errors"
 	"fmt"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/google/uuid"
-	"os"
+	"io"
 	"sync"
 )
 
 type TokenService struct {
 	mu      sync.Mutex
 	storage *Storage
-	logs    *os.File
+	nonce   []byte
 }
 
-func NewService(l string) (*TokenService, error) {
+func NewService() (*TokenService, error) {
 	store := NewStorage()
-	f, err := os.OpenFile(l, os.O_CREATE|os.O_WRONLY, 0777)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open logfile: %w", err)
+
+	n := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, n); err != nil {
+		return nil, err
 	}
+
 	out := &TokenService{
 		storage: store,
-		logs:    f,
+		nonce:   n,
 	}
 	return out, nil
-}
-
-// WriteLog is a service layer helper function that writes messages to the logfile.
-func (t *TokenService) WriteLog(msg string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	fmt.Fprintf(t.logs, "Found value: %v\n", msg)
-	return
 }
 
 type TokenSecret struct {
@@ -91,6 +85,7 @@ func (r DeleteTokenRequest) Validate() error {
 
 // Service layer functions validates the request data and
 // calls the appropriate storage layer functions.
+
 func (t *TokenService) ReadTokens(req *ReadTokenRequest) (*ReadTokenResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
@@ -104,7 +99,12 @@ func (t *TokenService) ReadTokens(req *ReadTokenRequest) (*ReadTokenResponse, er
 			return nil, err
 		}
 
-		d, err := Decrypter([]byte(tok), string(ret))
+		key, err := extractKey(tok)
+		if err != nil {
+			return nil, err
+		}
+
+		d, err := Decrypter(key, t.nonce, string(ret))
 		if err != nil {
 			return nil, err
 		}
@@ -126,12 +126,14 @@ func (t *TokenService) WriteToken(req *WriteTokenRequest) (*WriteTokenResponse, 
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	token := uuid.NewString()
+	key := keyGen()
 
-	encrypt, err := Encrypter([]byte(token), []byte(req.Secret))
+	encrypt, err := Encrypter(key, t.nonce, []byte(req.Secret))
 	if err != nil {
 		return nil, err
 	}
+
+	token := formatToken(string(key))
 
 	err = t.storage.WriteToken(token, encrypt)
 	if err != nil {
@@ -150,7 +152,12 @@ func (t *TokenService) UpdateToken(req *UpdateTokenRequest) error {
 		return fmt.Errorf("invalid request: %w", err)
 	}
 
-	encrypt, err := Encrypter([]byte(req.tokenSecret.Token), []byte(req.tokenSecret.Secret))
+	key, err := extractKey(req.tokenSecret.Token)
+	if err != nil {
+		return err
+	}
+
+	encrypt, err := Encrypter(key, t.nonce, []byte(req.tokenSecret.Secret))
 	if err != nil {
 		return err
 	}
@@ -164,4 +171,19 @@ func (t *TokenService) DeleteToken(req *DeleteTokenRequest) error {
 	}
 
 	return t.storage.DeleteToken(req.Token)
+}
+
+func formatToken(key string) string {
+	ret := "dp.token." + key
+	return ret
+}
+
+func extractKey(token string) ([]byte, error) {
+	formatting := token[:9]
+
+	if formatting != "dp.token." {
+		return nil, errors.New("improperly formatted token")
+	}
+
+	return []byte(token[9:]), nil
 }

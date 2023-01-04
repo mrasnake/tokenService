@@ -3,22 +3,16 @@ package internal
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io"
+	mrand "math/rand"
+	"time"
 )
 
-func Encrypter(key, secret []byte) ([]byte, error) {
+func Encrypter(key, nonce, secret []byte) ([]byte, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
-	}
-
-	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
-	nonce := make([]byte, 12)
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, err
 	}
 
@@ -31,10 +25,8 @@ func Encrypter(key, secret []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func Decrypter(key []byte, secret string) ([]byte, error) {
+func Decrypter(key, nonce []byte, secret string) ([]byte, error) {
 	ciphertext, _ := hex.DecodeString(secret)
-
-	nonce, _ := hex.DecodeString("bb8ef84243d2ee95a41c6c57")
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -47,4 +39,16 @@ func Decrypter(key []byte, secret string) ([]byte, error) {
 	}
 
 	return aesgcm.Open(nil, nonce, ciphertext, nil)
+}
+
+func keyGen() []byte {
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	var seededRand *mrand.Rand = mrand.New(
+		mrand.NewSource(time.Now().UnixNano()))
+	b := make([]byte, 32)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return b
 }

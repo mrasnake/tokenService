@@ -6,35 +6,44 @@ import (
 	"github.com/unrolled/render"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 func NewServer(srvc *TokenService) *Server {
 	return &Server{
-		service: srvc,
+		Service: srvc,
 	}
 }
 
 type Server struct {
-	service    *TokenService
-	router     *mux.Router
-	viewrender *render.Render
+	Service    *TokenService
+	Router     *mux.Router
+	Viewrender *render.Render
 }
 
 func (s *Server) ReadTokens(w http.ResponseWriter, r *http.Request) {
 
+	var toks []string
 	m, _ := url.ParseQuery(r.URL.RawQuery)
-	toks := m["t"]
+	t := m["t"]
+
+	if len(t) == 1 {
+		toks = strings.Split(t[0], ",")
+	} else {
+		toks = t
+	}
 
 	req := &ReadTokenRequest{
 		Tokens: toks,
 	}
 
-	ret, err := s.service.ReadTokens(req)
+	ret, err := s.Service.ReadTokens(req)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	s.viewrender.JSON(w, http.StatusOK, ret.tokenSecrets)
+	s.Viewrender.JSON(w, http.StatusOK, ret.tokenSecrets)
 
 }
 
@@ -47,13 +56,13 @@ func (s *Server) WriteToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ret, err := s.service.WriteToken(req)
+	ret, err := s.Service.WriteToken(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	s.viewrender.JSON(w, http.StatusOK, ret)
+	s.Viewrender.JSON(w, http.StatusOK, ret)
 }
 
 func (s *Server) UpdateToken(w http.ResponseWriter, r *http.Request) {
@@ -74,13 +83,13 @@ func (s *Server) UpdateToken(w http.ResponseWriter, r *http.Request) {
 		tokenSecret: in,
 	}
 
-	err = s.service.UpdateToken(req)
+	err = s.Service.UpdateToken(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	s.viewrender.JSON(w, http.StatusNoContent, nil)
+	s.Viewrender.JSON(w, http.StatusNoContent, nil)
 }
 
 func (s *Server) DeleteToken(w http.ResponseWriter, r *http.Request) {
@@ -91,12 +100,12 @@ func (s *Server) DeleteToken(w http.ResponseWriter, r *http.Request) {
 		Token: vars["token"],
 	}
 
-	err := s.service.DeleteToken(req)
+	err := s.Service.DeleteToken(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	s.viewrender.JSON(w, http.StatusNoContent, nil)
+	s.Viewrender.JSON(w, http.StatusNoContent, nil)
 
 }

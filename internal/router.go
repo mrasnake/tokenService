@@ -8,14 +8,15 @@ import (
 
 func (s *Server) InitServer() {
 
-	s.router = mux.NewRouter()
-	s.viewrender = render.New(render.Options{
+	s.Router = mux.NewRouter()
+	s.Viewrender = render.New(render.Options{
 		IsDevelopment: true,
 		Layout:        "layout",
 		UnEscapeHTML:  true,
 	})
 
-	s.router.HandleFunc("/tokens", s.ReadTokens).Methods(http.MethodGet)
-	s.router.HandleFunc("/tokens", s.WriteToken).Methods(http.MethodPost)
-	s.router.HandleFunc("/tokens/{token}", s.UpdateToken).Methods(http.MethodPut)
-	s.router.HandleFunc("/tokens/{token}", s.DeleteToken).Methods(http.MethodDelete)
+	s.Router.HandleFunc("/tokens", s.ReadTokens).Methods(http.MethodGet)
+	s.Router.HandleFunc("/tokens", s.WriteToken).Methods(http.MethodPost)
+	s.Router.HandleFunc("/tokens/{token}", s.UpdateToken).Methods(http.MethodPut)
+	s.Router.HandleFunc("/tokens/{token}", s.DeleteToken).Methods(http.MethodDelete)
+}
