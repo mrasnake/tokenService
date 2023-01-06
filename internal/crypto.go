@@ -3,7 +3,6 @@ package internal
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/hex"
 	"fmt"
 	mrand "math/rand"
 	"time"
@@ -26,7 +25,6 @@ func Encrypter(key, nonce, secret []byte) ([]byte, error) {
 }
 
 func Decrypter(key, nonce []byte, secret string) ([]byte, error) {
-	ciphertext, _ := hex.DecodeString(secret)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -38,13 +36,13 @@ func Decrypter(key, nonce []byte, secret string) ([]byte, error) {
 		return nil, fmt.Errorf("unable to create GCM: %w", err)
 	}
 
-	return aesgcm.Open(nil, nonce, ciphertext, nil)
+	return aesgcm.Open(nil, nonce, []byte(secret), nil)
 }
 
 func keyGen() []byte {
 	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	var seededRand *mrand.Rand = mrand.New(
+	seededRand := mrand.New(
 		mrand.NewSource(time.Now().UnixNano()))
 	b := make([]byte, 32)
 	for i := range b {
