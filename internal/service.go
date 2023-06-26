@@ -4,9 +4,10 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"io"
 	"sync"
+
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 type TokenService struct {
@@ -15,6 +16,7 @@ type TokenService struct {
 	nonce   []byte
 }
 
+// NewService creates and returns a Service
 func NewService() (*TokenService, error) {
 	store := NewStorage()
 
@@ -29,6 +31,8 @@ func NewService() (*TokenService, error) {
 	}
 	return out, nil
 }
+
+// Service layer request/response objects and corresponding validation functions.
 
 type TokenSecret struct {
 	Token  string `json:"token"`
@@ -86,6 +90,8 @@ func (r DeleteTokenRequest) Validate() error {
 // Service layer functions validates the request data and
 // calls the appropriate storage layer functions.
 
+// ReadTokens servers as the service layer GET function of /tokens endpoint,
+// validating the request data, calling storage layer and decrypting the results.
 func (t *TokenService) ReadTokens(req *ReadTokenRequest) (*ReadTokenResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
@@ -93,6 +99,7 @@ func (t *TokenService) ReadTokens(req *ReadTokenRequest) (*ReadTokenResponse, er
 
 	var ts []TokenSecret
 
+	// loop through tokens reading, decrypting and creating a list of TokenSecrets.
 	for _, tok := range req.Tokens {
 		ret, err := t.storage.ReadToken(tok)
 		if err != nil {
@@ -114,6 +121,8 @@ func (t *TokenService) ReadTokens(req *ReadTokenRequest) (*ReadTokenResponse, er
 			Secret: string(d),
 		})
 	}
+
+	// instantiate response object
 	out := &ReadTokenResponse{
 		tokenSecrets: ts,
 	}
@@ -121,6 +130,8 @@ func (t *TokenService) ReadTokens(req *ReadTokenRequest) (*ReadTokenResponse, er
 	return out, nil
 }
 
+// WriteToken servers as the service layer POST function of /tokens endpoint,
+// validating, encrypting and formatting the request data, then calling the Storage layer.
 func (t *TokenService) WriteToken(req *WriteTokenRequest) (*WriteTokenResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
@@ -147,6 +158,8 @@ func (t *TokenService) WriteToken(req *WriteTokenRequest) (*WriteTokenResponse, 
 	return out, nil
 }
 
+// UpdateToken servers as the service layer PUT function of /tokens endpoint,
+// validating and encrypting the request data, extracts the key, then calling the Storage layer.
 func (t *TokenService) UpdateToken(req *UpdateTokenRequest) error {
 	if err := req.Validate(); err != nil {
 		return fmt.Errorf("invalid request: %w", err)
@@ -165,6 +178,8 @@ func (t *TokenService) UpdateToken(req *UpdateTokenRequest) error {
 	return t.storage.UpdateToken(req.tokenSecret.Token, encrypt)
 }
 
+// DeleteToken servers as the service layer DELETE function of /tokens endpoint,
+// validating the request data, then calling the Storage layer.
 func (t *TokenService) DeleteToken(req *DeleteTokenRequest) error {
 	if err := req.Validate(); err != nil {
 		return fmt.Errorf("invalid request: %w", err)

@@ -1,11 +1,13 @@
 package internal
 
 import (
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
-	"net/http"
 )
 
+// InitServer is a Server method which creates the router, renderer and declares the API endpoints.
 func (s *Server) InitServer() {
 
 	s.Router = mux.NewRouter()
